@@ -23,6 +23,11 @@ This polyfill hijacks the `window.google.maps.drawing` namespace. It tracks nati
 
 *(Note: This polyfill handles the **creation** of shapes. For post-creation node editing, simply use the native `editable: true` property on standard Google Polylines/Polygons).*
 
+
+## 🗺️ Example
+
+https://mapchannels.github.io/mcx-drawing-polyfill/demo.html
+
 ## 📦 How to Integrate
 
 **Crucial Step:** Because this polyfill injects itself into the `google.maps` namespace, it **must** be loaded *after* the Google Maps API has fully initialized.
@@ -51,6 +56,3 @@ function onMapsReady() {
 }
 
 
-## Example
-
-https://mapchannels.github.io/mcx-drawing-polyfill/demo.html
