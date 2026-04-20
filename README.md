@@ -46,6 +46,10 @@ function onMapsReady() {
         // 2. Initialize your map and DrawingManager normally!
         initApp(); 
     };
+
+## Example
+
+https://mapchannels.github.io/mcx-drawing-polyfill/demo.html
     
     document.head.appendChild(polyfill);
 }
