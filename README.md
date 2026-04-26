@@ -26,7 +26,7 @@ This polyfill hijacks the `window.google.maps.drawing` namespace. It tracks nati
 
 ## 🗺️ Example
 
-https://mapchannels.github.io/mcx-drawing-polyfill/demo.html
+![Alt text](https://raw.githubusercontent.com/mapchannels/mcx-drawing-polyfill/main/mcx-drawing-polyfill.jpg)
 
 ## 📦 How to Integrate
 
