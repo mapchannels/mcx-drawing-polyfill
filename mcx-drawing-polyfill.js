@@ -1,4 +1,4 @@
-/*!
+﻿/*!
  * Google Maps Drawing Manager Polyfill
  * * A zero-dependency, drop-in replacement for the deprecated google.maps.drawing library.
  * * Author: Robert McMahon
@@ -346,43 +346,57 @@
             var lastCoord = this._coords[this._coords.length - 1];
             if (!lastCoord) return;
 
-            // FIX: If the mouse hasn't moved from the exact spot you clicked,
-            // hide the ghost line. A zero-length line has no angle, which causes 
-            // the Google Maps renderer to draw a crooked "spike" artifact!
-            if (lastCoord.equals(cursorLatLng))
-            {
-                if (this._ghostLine) this._ghostLine.setVisible(false);
-                return;
-            }
+            // The dotted preview is a Polyline whose dots are rendered as repeating
+            // icon SYMBOLS. A fresh array reference is built each call so re-assigning
+            // it below forces the symbol layer to repaint (see note further down).
+            var dotIcons = [{
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE,
+                    fillColor: '#1a73e8',
+                    fillOpacity: 0.7,
+                    strokeOpacity: 0,
+                    scale: 2
+                },
+                offset: '0',
+                repeat: '4px'
+            }];
 
-            var ghostPath = [lastCoord, cursorLatLng];
-
+            // Create the ghost line once, then keep it permanently on the map and
+            // ALWAYS visible. We never call setVisible() on it.
+            //
+            // FIX (intermittent disappearing dotted preview): the previous code hid
+            // the line with setVisible(false) right after each click and setVisible(true)
+            // on the next move. Toggling visibility on a symbol/icon polyline can leave
+            // the dot layer in a stale, un-painted state — the polyline reports itself
+            // as visible with a valid path, but the dots don't draw until a zoom/pan
+            // forces a full re-render. We now control the preview purely via its PATH.
             if (!this._ghostLine)
             {
                 this._ghostLine = new google.maps.Polyline({
-                    path: ghostPath,
+                    path: [],
                     map: this._map,
                     strokeOpacity: 0, // The main solid stroke must be hidden for dots to work
-                    icons: [{
-                        icon: {
-                            // FIX: Changed from a dashed line to a dotted line as requested
-                            path: google.maps.SymbolPath.CIRCLE,
-                            fillColor: '#1a73e8',
-                            fillOpacity: 0.7,
-                            strokeOpacity: 0,
-                            scale: 2
-                        },
-                        offset: '0',
-                        repeat: '4px'
-                    }],
+                    icons: dotIcons,
                     clickable: false,
                     zIndex: 201
                 });
-            } else
-            {
-                this._ghostLine.setPath(ghostPath);
-                this._ghostLine.setVisible(true); // Bring it back once the mouse moves
             }
+
+            // If the cursor sits exactly on the last node the segment is zero-length,
+            // which has no bearing and makes the renderer draw a stray "spike". Collapse
+            // the path to nothing instead of hiding the overlay.
+            if (lastCoord.equals(cursorLatLng))
+            {
+                this._ghostLine.setPath([]);
+                return;
+            }
+
+            this._ghostLine.setPath([lastCoord, cursorLatLng]);
+
+            // Re-assign the icons (new array reference) to force the dotted symbol layer
+            // to repaint. This defeats the stale-render glitch that the old setVisible
+            // toggle could trigger, so the preview can no longer get "stuck" blank.
+            this._ghostLine.set('icons', dotIcons);
         };
 
         DrawingManager.prototype._updateFinishingNode = function () 
