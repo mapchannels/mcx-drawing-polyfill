@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mcx-drawing-polyfill v2 — Advanced Marker Mode Demo</title>
+    <link rel="stylesheet" href="demo-common.css">
+</head>
+<body>
+
+    <div class="container">
+        <h2>mcx-drawing-polyfill v2 — Advanced Marker Mode</h2>
+        <p class="hint">
+            The Maps API on this page is loaded <strong>with</strong> <code>libraries=marker</code> and the
+            map is created with a <code>mapId</code>, so <code>markerType: 'auto'</code> resolves to
+            <strong>advanced</strong> <code>google.maps.marker.AdvancedMarkerElement</code>. The marker
+            tool drops a custom HTML pin (<code>markerOptions.content</code>, cloned per marker), and the
+            polyline/polygon finishing node is a <strong>custom SVG diamond</strong>
+            (<code>finishingMarkerSVG</code>) — click it to finish a shape. Marker positions in the output
+            are read via <code>MCXMarkerUtils.getLatLng()</code>, which works for both marker classes.
+        </p>
+        <div id="demo"></div>
+    </div>
+
+    <script src="demo-common.js"></script>
+    <script>
+        // REPLACE THIS WITH YOUR ACTUAL GOOGLE MAPS API KEY
+        const API_KEY = "YOUR_API_KEY_HERE";
+
+        // 1. Load Google Maps WITH the marker library (required for advanced mode)
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=marker&callback=loadPolyfill`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+
+        // 2. Load the unified polyfill AFTER Maps API is ready
+        function loadPolyfill()
+        {
+            const s = document.createElement('script');
+            s.src = 'mcx-drawing-polyfill-v2.js';   // single file — no extension script needed
+            s.onload = initApp;
+            document.head.appendChild(s);
+        }
+
+        // Custom HTML pin for drawn markers (AdvancedMarkerElementOptions.content).
+        // The polyfill clones this element for every marker placed.
+        function buildCustomPin()
+        {
+            const pin = document.createElement('div');
+            pin.style.cssText =
+                'width:22px;height:22px;border-radius:50% 50% 50% 0;' +
+                'background:#1a73e8;border:2px solid #fff;transform:rotate(-45deg);' +
+                'box-shadow:0 2px 6px rgba(0,0,0,0.4);';
+            return pin;
+        }
+
+        // 3. Initialise
+        function initApp()
+        {
+            mcxCreateDemoPanel({
+                root: 'demo',
+                mapOptions: {
+                    center: { lat: 51.5074, lng: -0.1278 }, // London
+                    zoom: 13,
+                    mapTypeId: 'roadmap',
+                    gestureHandling: 'greedy', // scrollwheel zooms without Ctrl
+                    // A mapId is required for advanced markers. Note: with a
+                    // mapId, styling comes from the Cloud Console — the local
+                    // `styles` array is ignored.
+                    mapId: '11f11faec32a6ae3'
+                },
+                managerOptions: {
+                    drawingMode: null,
+                    drawingControl: true,
+                    drawingControlOptions: {
+                        position: google.maps.ControlPosition.TOP_CENTER,
+                        drawingModes: ['marker', 'polyline', 'polygon', 'circle', 'rectangle']
+                    },
+
+                    markerType: 'auto', // resolves to 'advanced' on this page
+
+                    // Advanced mode: AdvancedMarkerElementOptions
+                    markerOptions: {
+                        content: buildCustomPin(),
+                        title: 'Drawn with mcx-drawing (AdvancedMarkerElement)'
+                    },
+
+                    // Custom SVG for the finishing node (advanced mode only).
+                    // Its height attribute drives the vertical centring maths.
+                    finishingMarkerSVG:
+                        '<svg height="16" width="16" xmlns="http://www.w3.org/2000/svg">' +
+                        '<rect x="3" y="3" width="10" height="10" rx="2" fill="#ffffff" ' +
+                        'stroke="#d93025" stroke-width="2" transform="rotate(45 8 8)"/></svg>'
+                }
+            });
+        }
+    </script>
+</body>
+</html>

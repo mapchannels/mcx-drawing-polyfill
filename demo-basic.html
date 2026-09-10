@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mcx-drawing-polyfill v2 — Basic Marker Mode Demo</title>
+    <link rel="stylesheet" href="demo-common.css">
+</head>
+<body>
+
+    <div class="container">
+        <h2>mcx-drawing-polyfill v2 — Basic Marker Mode</h2>
+        <p class="hint">
+            The Maps API on this page is loaded <strong>without</strong> <code>libraries=marker</code> and
+            the map has <strong>no</strong> <code>mapId</code>, so <code>markerType: 'auto'</code> resolves
+            to <strong>basic</strong> <code>google.maps.Marker</code>. All five tools are available:
+            click to place markers and draw lines/polygons (click the white node to finish), and
+            <em>press and drag</em> for circles and rectangles (panning is locked while those tools are
+            active). Custom <code>polylineOptions</code>, <code>polygonOptions</code> and
+            <code>ghostlineOptions</code> are set below — note the in-progress line and the dotted
+            preview match the finished shape's styling.
+        </p>
+        <div id="demo"></div>
+    </div>
+
+    <script src="demo-common.js"></script>
+    <script>
+        // REPLACE THIS WITH YOUR ACTUAL GOOGLE MAPS API KEY
+        const API_KEY = "YOUR_API_KEY_HERE";
+
+        // 1. Load Google Maps — deliberately WITHOUT &libraries=marker
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=loadPolyfill`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+
+        // 2. Load the unified polyfill AFTER Maps API is ready
+        function loadPolyfill()
+        {
+            const s = document.createElement('script');
+            s.src = 'mcx-drawing-polyfill-v2.js';   // single file — no extension script needed
+            s.onload = initApp;
+            document.head.appendChild(s);
+        }
+
+        // 3. Initialise
+        function initApp()
+        {
+            mcxCreateDemoPanel({
+                root: 'demo',
+                mapOptions: {
+                    center: { lat: 51.5074, lng: -0.1278 }, // London
+                    zoom: 13,
+                    mapTypeId: 'roadmap',
+                    gestureHandling: 'greedy', // scrollwheel zooms without Ctrl
+                    // Hide text labels; geometry stays visible (local styles work
+                    // here because there is no mapId / cloud styling)
+                    styles: [{ elementType: 'labels', stylers: [{ visibility: 'off' }] }]
+                },
+                managerOptions: {
+                    drawingMode: null,
+                    drawingControl: true,
+                    drawingControlOptions: {
+                        position: google.maps.ControlPosition.TOP_CENTER,
+                        drawingModes: ['marker', 'polyline', 'polygon', 'circle', 'rectangle']
+                    },
+
+                    markerType: 'auto', // resolves to 'basic' on this page
+
+                    // Basic mode: MarkerOptions — SymbolPath icons work here
+                    markerOptions: {
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 8,
+                            fillColor: '#d93025',
+                            fillOpacity: 1,
+                            strokeColor: '#ffffff',
+                            strokeWeight: 2
+                        },
+                        title: 'Drawn with mcx-drawing (basic Marker)'
+                    },
+
+                    // Styles BOTH the in-progress line and the finished polyline
+                    polylineOptions: {
+                        strokeColor: '#e37400',
+                        strokeWeight: 4
+                    },
+
+                    polygonOptions: {
+                        strokeColor: '#188038',
+                        fillColor: '#188038',
+                        fillOpacity: 0.15
+                    },
+
+                    // Restyled dotted preview (orange, wider dot spacing)
+                    ghostlineOptions: {
+                        icons: [{
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                fillColor: '#e37400',
+                                fillOpacity: 0.8,
+                                strokeOpacity: 0,
+                                scale: 2
+                            },
+                            offset: '0',
+                            repeat: '6px'
+                        }]
+                    },
+
+                    circleOptions: {
+                        strokeColor: '#9334e6',
+                        fillColor: '#9334e6'
+                    },
+
+                    rectangleOptions: {
+                        strokeColor: '#b06000',
+                        fillColor: '#fbbc04',
+                        fillOpacity: 0.25
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
