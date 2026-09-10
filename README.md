@@ -2,6 +2,57 @@
 
 A standalone, zero-dependency drop-in replacement for the deprecated `google.maps.drawing` library.
 
+## 🆕 v2.0 — `mcx-drawing-polyfill-v2.js` (unified file)
+
+Version 2.0 merges the base polyfill, PR #1 (AdvancedMarkerElement + styling options) and the circle/rectangle extension into a **single file**: **`mcx-drawing-polyfill-v2.js`**. Existing pages using `mcx-drawing-polyfill.js` + `mcx-drawing-shapes.js` work unchanged — just swap the script tag(s) for the one file. The two old files remain in the repo for one release but are **deprecated** in favour of `mcx-drawing-polyfill-v2.js`.
+
+### Dual marker support
+
+The marker tool and the finishing node can use either marker class, controlled by the `markerType` option:
+
+| `markerType` | Behaviour |
+|---|---|
+| `'auto'` (default) | Advanced if `google.maps.marker.AdvancedMarkerElement` is available **and** the map was created with a `mapId`; otherwise basic. |
+| `'basic'` | Always `google.maps.Marker`. |
+| `'advanced'` | `AdvancedMarkerElement`, but falls back to basic with a `console.warn` if the prerequisites are missing. |
+
+Advanced mode requires the Maps API loaded with **`&libraries=marker`** and a map **`mapId`**; basic mode needs neither. The resolved mode is logged via `console.info` on attach and readable via `drawingManager.getMarkerType()`.
+
+In advanced mode, `overlaycomplete` for markers carries an `AdvancedMarkerElement` (`.position` property, not `.getPosition()`). Use **`google.maps.drawing.MCXMarkerUtils.getLatLng(overlay)`** to read `{lat, lng}` from either marker class without branching.
+
+### DrawingManagerOptions reference
+
+All styling options are **partial overrides** — supply only the fields you want to change and the defaults fill in the rest.
+
+| Option | Applies to | Notes |
+|---|---|---|
+| `map` | — | Map to attach to (or call `setMap()` later). |
+| `drawingMode` | — | Initial mode; `null` = pan. |
+| `drawingControl` | toolbar | `false` suppresses the toolbar. |
+| `drawingControlOptions` | toolbar | `{ position, drawingModes }`; modes: `'marker'`, `'polyline'`, `'polygon'`, `'circle'`, `'rectangle'`. |
+| `markerType` | markers | `'basic' \| 'advanced' \| 'auto'` (see above). |
+| `markerOptions` | completed markers | **Interpreted per resolved mode**: `MarkerOptions` in basic mode (e.g. `icon`, `label`), `AdvancedMarkerElementOptions` in advanced mode (e.g. `content` — an Element is cloned per marker — `gmpDraggable`). There is no translation layer. |
+| `polylineOptions` | completed polylines **and** the in-progress line | The active line's stroke colour/weight/opacity mirror these so preview matches result. |
+| `polygonOptions` | completed polygons | |
+| `circleOptions` | circles | Drawn shapes are promoted to `editable`/`draggable`/`clickable` on completion. |
+| `rectangleOptions` | rectangles | As above. |
+| `ghostlineOptions` | dotted preview line | `icons` supplies the repeating dot symbol(s). `clickable` and `zIndex` are **fixed internally** and cannot be overridden. |
+| `finishingMarkerSVGOptions` | finishing node (both modes) | `fillColor`, `fillOpacity`, `strokeColor`, `strokeWeight`, `scale` — rendered as a Symbol in basic mode and as a generated SVG in advanced mode. |
+| `finishingMarkerSVG` | finishing node (advanced only) | Custom SVG markup; ignored (with a warning) in basic mode. Overrides `finishingMarkerSVGOptions`. |
+
+### Helpers
+
+* `google.maps.drawing.MCXShapeUtils` — `metersBetween(a, b)`, `rectangleSize(rect)`, `setRectangleSize(rect, w, h)` (metres, spherical maths, zero-dependency).
+* `google.maps.drawing.MCXMarkerUtils` — `getLatLng(overlay)` → `{lat, lng}` from either marker class.
+
+### Demos
+
+* **`demo-basic.html`** — API without `libraries=marker`, no `mapId` → auto-resolves to basic. All five tools + custom shape/ghost-line styling + the metre-based property editor.
+* **`demo-advanced.html`** — API with `libraries=marker`, map with a `mapId` → auto-resolves to advanced. Custom HTML pin markers, custom SVG finishing node, `MCXMarkerUtils` output.
+* **`demo-combined.html`** — both of the above side by side on one page, from one API load and one script file, demonstrating `'auto'` resolving differently per map.
+
+---
+
 ## ⚠️ Why is this needed?
 In August 2025, Google deprecated the `google.maps.drawing` library. It will be completely removed from the Maps JavaScript API in **May 2026**. 
 
