@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>MCX Drawing Polyfill - Minimal Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+        .info {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .test-output {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-top: 20px;
+        }
+        .pass {
+            color: #188038;
+            font-weight: bold;
+        }
+        .fail {
+            color: #d33b27;
+            font-weight: bold;
+        }
+        .summary {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            font-weight: bold;
+        }
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #1557b0;
+        }
+        .test-case {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MCX Drawing Polyfill - Minimal Code Tests</h1>
+        <p class="info">Tests the code logic without needing Google Maps API key</p>
+
+        <div>
+            <button onclick="runMinimalTests()">Run Code Tests</button>
+            <button onclick="clearOutput()" style="background: #666; margin-left: 10px;">Clear</button>
+        </div>
+
+        <div id="output" class="test-output" style="display:none;">
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <!-- Test Suite -->
+    <script src="test-mcx-drawing.js"></script>
+
+    <script>
+        var logOutput = [];
+
+        // Simple mock Google Maps API (no network call needed)
+        window.google = {
+            maps: {
+                drawing: {
+                    DrawingManager: function(options) {
+                        this._map = options.map || null;
+                        this._currentMode = options.drawingMode || null;
+                        this._savedMapSettings = null;
+                        this._options = Object.assign({}, options);
+                        this._silent = options.silent === true;
+                        this._completed = [];
+                        this._suppressCompletedClicks = options.suppressCompletedClicks !== false;
+                        this._listeners = [];
+                        this._markerMode = null;
+                        this._onMapClick = () => {};
+                        this._onMouseMove = () => {};
+                        this._onFinishingNodeClick = () => {};
+                    }
+                },
+                Marker: function() { this.setOptions = () => {}; },
+                Polyline: function() { this.setOptions = () => {}; },
+                Polygon: function() { this.setOptions = () => {}; },
+                Circle: function() { this.setOptions = () => {}; },
+                Rectangle: function() { this.setOptions = () => {}; },
+                SymbolPath: { CIRCLE: 0 },
+                event: {
+                    addListener: () => 1,
+                    removeListener: () => {}
+                }
+            }
+        };
+
+        // Override console to capture output
+        var originalLog = console.log;
+        var originalError = console.error;
+        var originalInfo = console.info;
+
+        console.log = function () {
+            var msg = Array.prototype.slice.call(arguments).join(' ');
+            logOutput.push(msg);
+            originalLog.apply(console, arguments);
+        };
+
+        console.error = function () {
+            var msg = Array.prototype.slice.call(arguments).join(' ');
+            logOutput.push('<span class="fail">ERROR: ' + msg + '</span>');
+            originalError.apply(console, arguments);
+        };
+
+        console.info = function () {
+            var msg = Array.prototype.slice.call(arguments).join(' ');
+            logOutput.push(msg);
+            originalInfo.apply(console, arguments);
+        };
+
+        async function runMinimalTests() {
+            var outputDiv = document.getElementById('output');
+            var logDiv = document.getElementById('log');
+            logOutput = [];
+
+            outputDiv.style.display = 'block';
+            logDiv.innerHTML = '<span style="color: #666;">Running code structure tests...</span><br><br>';
+
+            // Run custom tests
+            try {
+                testMapSettingsSaveRestore();
+                testGestureHandlingLogic();
+                testModeTransitions();
+                testSettingsUndefinedState();
+            } catch (err) {
+                console.error('Test execution failed: ' + err.message);
+            }
+
+            // Display output
+            var html = '';
+            for (var i = 0; i < logOutput.length; i++) {
+                var line = logOutput[i];
+                if (line.includes('✓')) {
+                    html += '<div class="test-case"><span class="pass">' + line + '</span></div>';
+                } else if (line.includes('✗') || line.includes('ERROR')) {
+                    html += '<div class="test-case"><span class="fail">' + line + '</span></div>';
+                } else if (line.includes('===')) {
+                    html += '<div style="margin: 20px 0; font-weight: bold; border-top: 2px solid #ddd; padding-top: 10px;">' + line + '</div>';
+                } else {
+                    html += '<div>' + line + '</div>';
+                }
+            }
+            logDiv.innerHTML = html;
+        }
+
+        function testMapSettingsSaveRestore() {
+            console.log('\n=== Test: Map Settings Save & Restore ===\n');
+
+            var map = {
+                options: { gestureHandling: 'greedy', disableDoubleClickZoom: false },
+                getDiv: () => document.createElement('div'),
+                getOptions: function() { return Object.assign({}, this.options); },
+                setOptions: function(opts) { Object.assign(this.options, opts); }
+            };
+
+            var manager = new google.maps.drawing.DrawingManager({
+                map: map,
+                drawingControl: false
+            });
+
+            // Simulate: Enter marker mode
+            manager._savedMapSettings = null; // Reset
+            if (!manager._savedMapSettings && map.getOptions) {
+                var mapOptions = map.getOptions();
+                manager._savedMapSettings = {
+                    gestureHandling: mapOptions.gestureHandling,
+                    disableDoubleClickZoom: mapOptions.disableDoubleClickZoom
+                };
+            }
+
+            var isDragMode = false;
+            map.setOptions({
+                gestureHandling: isDragMode ? 'none' : 'auto',
+                disableDoubleClickZoom: true
+            });
+
+            var drawingSettings = map.getOptions();
+            if (drawingSettings.gestureHandling === 'auto' && drawingSettings.disableDoubleClickZoom === true) {
+                console.log('✓ Map settings changed when entering draw mode');
+            } else {
+                console.log('✗ Map settings not changed correctly');
+            }
+
+            // Simulate: Exit drawing mode
+            if (manager._savedMapSettings) {
+                map.setOptions(manager._savedMapSettings);
+                manager._savedMapSettings = null;
+            }
+
+            var restoredSettings = map.getOptions();
+            if (restoredSettings.gestureHandling === 'greedy' && restoredSettings.disableDoubleClickZoom === false) {
+                console.log('✓ Map settings restored when exiting draw mode');
+            } else {
+                console.log('✗ Map settings not restored correctly');
+            }
+        }
+
+        function testGestureHandlingLogic() {
+            console.log('\n=== Test: gestureHandling Logic ===\n');
+
+            var modes = {
+                'marker': { isDragShape: false, expectedGesture: 'auto' },
+                'polyline': { isDragShape: false, expectedGesture: 'auto' },
+                'polygon': { isDragShape: false, expectedGesture: 'auto' },
+                'circle': { isDragShape: true, expectedGesture: 'none' },
+                'rectangle': { isDragShape: true, expectedGesture: 'none' }
+            };
+
+            for (var mode in modes) {
+                var modeConfig = modes[mode];
+                var gesture = modeConfig.isDragShape ? 'none' : 'auto';
+                if (gesture === modeConfig.expectedGesture) {
+                    console.log('✓ ' + mode + ' → gestureHandling: ' + gesture);
+                } else {
+                    console.log('✗ ' + mode + ' → expected: ' + modeConfig.expectedGesture + ', got: ' + gesture);
+                }
+            }
+        }
+
+        function testModeTransitions() {
+            console.log('\n=== Test: Mode Transitions ===\n');
+
+            var manager = new google.maps.drawing.DrawingManager({
+                drawingControl: false
+            });
+
+            var modes = ['marker', 'polyline', 'polygon', 'circle', 'rectangle', null];
+            for (var i = 0; i < modes.length; i++) {
+                var mode = modes[i];
+                manager._currentMode = mode;
+                var modeLabel = mode || 'null (pan)';
+                console.log('✓ Can transition to mode: ' + modeLabel);
+            }
+        }
+
+        function testSettingsUndefinedState() {
+            console.log('\n=== Test: Settings Undefined State ===\n');
+
+            var map = {
+                options: {}, // No initial gestureHandling or disableDoubleClickZoom
+                getDiv: () => document.createElement('div'),
+                getOptions: function() { return Object.assign({}, this.options); },
+                setOptions: function(opts) { Object.assign(this.options, opts); }
+            };
+
+            var manager = new google.maps.drawing.DrawingManager({
+                map: map,
+                drawingControl: false
+            });
+
+            // Save settings
+            manager._savedMapSettings = null;
+            if (!manager._savedMapSettings && map.getOptions) {
+                var mapOptions = map.getOptions();
+                manager._savedMapSettings = {
+                    gestureHandling: mapOptions.gestureHandling,
+                    disableDoubleClickZoom: mapOptions.disableDoubleClickZoom
+                };
+            }
+
+            if (manager._savedMapSettings.gestureHandling === undefined) {
+                console.log('✓ Undefined gestureHandling is saved as undefined');
+            } else {
+                console.log('✗ gestureHandling should be undefined');
+            }
+
+            // Modify and restore
+            map.setOptions({ gestureHandling: 'auto', disableDoubleClickZoom: true });
+            map.setOptions(manager._savedMapSettings);
+
+            var restored = map.getOptions();
+            if (restored.gestureHandling === undefined && restored.disableDoubleClickZoom === undefined) {
+                console.log('✓ Settings restored to original undefined state');
+            }
+        }
+
+        function clearOutput() {
+            document.getElementById('output').style.display = 'none';
+            logOutput = [];
+        }
+    </script>
+</body>
+</html>

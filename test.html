@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>MCX Drawing Polyfill - Test Suite</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+        .info {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        .test-output {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .pass {
+            color: #188038;
+        }
+        .fail {
+            color: #d33b27;
+        }
+        .summary {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            font-weight: bold;
+        }
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #1557b0;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MCX Drawing Polyfill Test Suite</h1>
+        <p class="info">Tests for lifecycle, map settings restoration, and overlay types</p>
+
+        <div class="controls">
+            <div style="margin-bottom: 15px;">
+                <label>Google Maps API Key (optional, stored in localStorage):</label><br>
+                <input type="password" id="apiKey" placeholder="Your API key" style="width: 300px; padding: 8px; margin-top: 5px;">
+                <button onclick="setApiKey()" style="margin-left: 10px;">Set API Key</button>
+            </div>
+            <button onclick="runTests()">Run Tests</button>
+        </div>
+
+        <div id="output" class="test-output" style="display:none;">
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <!-- Google Maps (required for the polyfill to load) -->
+    <!-- IMPORTANT: Replace YOUR_API_KEY with your actual Google Maps API key -->
+    <script>
+        function initMaps() {
+            console.log('Google Maps API loaded');
+        }
+
+        // If you don't have an API key, this will still load Google Maps in development mode
+        var mapsUrl = 'https://maps.googleapis.com/maps/api/js?callback=initMaps';
+        var apiKey = localStorage.getItem('mcx-test-api-key') || '';
+        if (apiKey) {
+            mapsUrl = 'https://maps.googleapis.com/maps/api/js?key=' + apiKey + '&callback=initMaps';
+        }
+
+        var script = document.createElement('script');
+        script.src = mapsUrl;
+        script.async = true;
+        document.head.appendChild(script);
+    </script>
+
+    <!-- MCX Drawing Polyfill -->
+    <script src="mcx-drawing-polyfill.js"></script>
+
+    <!-- Test Suite -->
+    <script src="test-mcx-drawing.js"></script>
+
+    <script>
+        function setApiKey() {
+            var key = document.getElementById('apiKey').value.trim();
+            if (key) {
+                localStorage.setItem('mcx-test-api-key', key);
+                alert('API key saved to localStorage. Please reload the page.');
+            }
+        }
+
+        function initMaps() {
+            console.log('Google Maps API loaded');
+        }
+
+        var logOutput = [];
+
+        // Override console methods to capture output
+        var originalLog = console.log;
+        var originalError = console.error;
+        var originalInfo = console.info;
+
+        console.log = function () {
+            var msg = Array.prototype.slice.call(arguments).join(' ');
+            logOutput.push(msg);
+            originalLog.apply(console, arguments);
+        };
+
+        console.error = function () {
+            var msg = Array.prototype.slice.call(arguments).join(' ');
+            logOutput.push('<span class="fail">' + msg + '</span>');
+            originalError.apply(console, arguments);
+        };
+
+        console.info = function () {
+            var msg = Array.prototype.slice.call(arguments).join(' ');
+            logOutput.push(msg);
+            originalInfo.apply(console, arguments);
+        };
+
+        async function runTests() {
+            var outputDiv = document.getElementById('output');
+            var logDiv = document.getElementById('log');
+            logOutput = [];
+
+            // Check if Maps API is loaded
+            if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                logDiv.innerHTML = '<span class="fail">ERROR: Google Maps API not loaded yet. Wait a moment and try again.</span>';
+                outputDiv.style.display = 'block';
+                return;
+            }
+
+            // Check if the polyfill is loaded
+            if (typeof google.maps.drawing === 'undefined') {
+                logDiv.innerHTML = '<span class="fail">ERROR: MCX Drawing Polyfill not loaded.</span>';
+                outputDiv.style.display = 'block';
+                return;
+            }
+
+            outputDiv.style.display = 'block';
+            logDiv.innerHTML = 'Running tests...<br>';
+
+            // Run the tests
+            await MCXDrawingTestRunner.run();
+
+            // Display the captured output
+            var html = '';
+            for (var i = 0; i < logOutput.length; i++) {
+                var line = logOutput[i];
+                if (line.includes('✓ PASS')) {
+                    html += '<span class="pass">' + line + '</span><br>';
+                } else if (line.includes('✗ FAIL')) {
+                    html += '<span class="fail">' + line + '</span><br>';
+                } else if (line.includes('Error:')) {
+                    html += '<span class="fail">  ' + line + '</span><br>';
+                } else {
+                    html += line + '<br>';
+                }
+            }
+            logDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

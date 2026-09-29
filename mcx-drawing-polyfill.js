@@ -330,6 +330,9 @@
             // Resolved marker mode ('basic' | 'advanced'), decided at setMap() time
             this._markerMode = null;
 
+            // Saved map settings (restored when drawing stops)
+            this._savedMapSettings = null;
+
             // Bind stable handler references
             this._onMapClick = this._handleMapClick.bind(this);
             this._onMouseMove = this._handleMouseMove.bind(this);
@@ -532,8 +535,33 @@
 
             if (this._map)
             {
-                // Circle/Rectangle are drag-to-draw, so panning must be off while active
-                this._map.setOptions({ draggable: !_isDragShapeMode(mode) });
+                if (mode)
+                {
+                    // Save original map settings when entering a drawing mode
+                    if (!this._savedMapSettings)
+                    {
+                        var mapOptions = this._map.getOptions ? this._map.getOptions() : {};
+                        this._savedMapSettings = {
+                            gestureHandling: mapOptions.gestureHandling,
+                            disableDoubleClickZoom: mapOptions.disableDoubleClickZoom
+                        };
+                    }
+
+                    // Circle/Rectangle are drag-to-draw, so panning must be off while active
+                    var newOptions = {
+                        gestureHandling: _isDragShapeMode(mode) ? 'none' : 'auto',
+                        disableDoubleClickZoom: true
+                    };
+                    this._map.setOptions(newOptions);
+                } else
+                {
+                    // Restore original map settings when exiting drawing mode
+                    if (this._savedMapSettings)
+                    {
+                        this._map.setOptions(this._savedMapSettings);
+                        this._savedMapSettings = null;
+                    }
+                }
             }
         };
 
@@ -1359,18 +1387,16 @@
             if (this._currentMode)
             {
                 if (container) container.style.cursor = 'crosshair';
-                // Lock crosshairs and disable double click zooming while drawing
+                // Lock crosshairs while drawing (disableDoubleClickZoom handled in setDrawingMode)
                 this._map.setOptions({
-                    draggableCursor: 'crosshair',
-                    disableDoubleClickZoom: true
+                    draggableCursor: 'crosshair'
                 });
             } else
             {
                 if (container) container.style.cursor = '';
-                // Restore map defaults
+                // Restore map cursor defaults (gesture handling restored in setDrawingMode)
                 this._map.setOptions({
-                    draggableCursor: '',
-                    disableDoubleClickZoom: false
+                    draggableCursor: ''
                 });
             }
         };

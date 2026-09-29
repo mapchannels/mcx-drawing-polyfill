@@ -1,0 +1,8 @@
+# This file defines code ownership for this repository
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Primary owner: Frontend Mapping Team
+# This team is responsible for maintaining the MCX Drawing Polyfill fork
+# and ensuring compatibility with Tenna's mapping applications
+
+* @tenna-llc/frontend-mapping-team
